@@ -3,6 +3,7 @@ package xyz.guqing.cvs.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import xyz.guqing.cvs.model.entity.ContentRecord;
+import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
  * @author guqing
@@ -11,4 +12,5 @@ import xyz.guqing.cvs.model.entity.ContentRecord;
 @Repository
 public interface ContentRecordRepository extends JpaRepository<ContentRecord, Integer> {
 
+    ContentRecord findFirstByPostIdAndStatusOrderByVersionDesc(Integer postId, PostStatus status);
 }

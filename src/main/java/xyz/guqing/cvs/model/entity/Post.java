@@ -1,14 +1,17 @@
 package xyz.guqing.cvs.model.entity;
 
 import java.time.LocalDateTime;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.OneToOne;
+import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.ColumnDefault;
 import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
@@ -23,8 +26,6 @@ public class Post extends BaseEntity {
 
     @NotNull
     private String title;
-
-    private Integer contentId;
 
     private Integer version;
 

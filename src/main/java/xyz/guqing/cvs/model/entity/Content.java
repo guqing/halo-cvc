@@ -1,23 +1,21 @@
 package xyz.guqing.cvs.model.entity;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+
+import javax.persistence.MapsId;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
 import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
@@ -29,12 +27,13 @@ import xyz.guqing.cvs.model.enums.PostStatus;
 @Data
 @Entity
 @Table(name = "contents")
-@EqualsAndHashCode(callSuper = true)
-public class Content extends BaseEntity {
+public class Content {
+    @Id
+    @Column(name = "post_id")
+    private Integer id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", referencedColumnName = "id",
-        insertable = true, updatable = true, nullable = false)
+    @MapsId
     private Post post;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -45,7 +44,4 @@ public class Content extends BaseEntity {
     private String content;
 
     private String originalContent;
-
-    @Enumerated(EnumType.STRING)
-    private PostStatus status;
 }

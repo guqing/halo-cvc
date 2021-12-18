@@ -1,18 +1,15 @@
 package xyz.guqing.cvs.model.entity;
 
-import java.time.LocalDateTime;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
-import javax.persistence.PrePersist;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.ColumnDefault;
 import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
@@ -25,10 +22,11 @@ import xyz.guqing.cvs.model.enums.PostStatus;
 @EqualsAndHashCode(callSuper = true)
 public class ContentRecord extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", referencedColumnName = "id",
-        insertable = true, updatable = true, nullable = false)
-    private Post post;
+//    @OneToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "post_id", referencedColumnName = "id",
+//        insertable = true, updatable = true, nullable = false)
+    //private Post post;
+    private Integer postId;
 
     private String content;
 

@@ -11,7 +11,5 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PostDetailDTO extends PostDTO {
 
-    private String content;
-
-    private String originalContent;
+    private ContentDTO content;
 }
