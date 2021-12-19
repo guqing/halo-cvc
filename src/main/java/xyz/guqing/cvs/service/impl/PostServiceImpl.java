@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import xyz.guqing.cvs.model.dto.ContentDTO;
+import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
 import xyz.guqing.cvs.model.entity.Content;
 import xyz.guqing.cvs.model.entity.ContentRecord;
@@ -77,6 +78,8 @@ public class PostServiceImpl implements PostService {
             }
             return null;
         }
+        // 传入实际的内容
+        //createDraftContent(postId, contentParam.getContent(), contentParam.getOriginalContent());
         Post post = postParam.convertTo();
         Content content = postParam.getContent().convertTo();
         createDraft(post, content);
@@ -222,9 +225,6 @@ public class PostServiceImpl implements PostService {
         post.setPublishTime(LocalDateTime.now());
         post.setStatus(PostStatus.PUBLISHED);
         postRepository.save(post);
-
-        // 传入实际的内容
-        createDraftContent(postId, content.getContent(), content.getOriginalContent());
         return post;
     }
 
@@ -244,24 +244,66 @@ public class PostServiceImpl implements PostService {
     public PostDetailDTO getDraftById(Integer postId) {
         Post post = postRepository.getById(postId);
         ContentRecord contentRecord =
-            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
-                PostStatus.DRAFT);
+            contentRecordRepository.findFirstByPostIdOrderByVersionDesc(postId);
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
         ContentDTO contentDTO = new ContentDTO();
-        if(contentRecord.getVersion() == 1) {
-            contentDTO.setContent(contentRecord.getContent());
-            contentDTO.setOriginalContent(contentRecord.getOriginalContent());
-        } else {
-            ContentRecord baseContentRecord =
-                contentRecordRepository.findByPostIdAndVersion(postId, 1);
-            contentDTO.setContent(restoreByPatchJson(contentRecord.getContent(),
-                baseContentRecord.getContent()));
-            contentDTO.setOriginalContent(restoreByPatchJson(contentRecord.getOriginalContent(),
-                baseContentRecord.getOriginalContent()));
-        }
 
+        decodeContentRecord(contentRecord);
+        contentDTO.setContent(contentRecord.getContent());
+        contentDTO.setOriginalContent(contentRecord.getOriginalContent());
         postDTO.setContent(contentDTO);
         return postDTO;
+    }
+
+    @Override
+    public List<ContentRecord> listAllVersionsBy(Integer postId) {
+        return contentRecordRepository.findAllByPostIdAndStatusOrderByVersionDesc(postId, PostStatus.PUBLISHED);
+    }
+
+    @Override
+    public ContentRecord getContentRecordById(Integer contentRecordId) {
+        ContentRecord contentRecord = contentRecordRepository.getById(contentRecordId);
+        return decodeContentRecord(contentRecord);
+    }
+
+    @Override
+    public PostDetailDTO rollbackByIdAndVersion(Integer postId, Integer version) {
+        ContentRecord contentRecord =
+            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
+                PostStatus.DRAFT);
+        if(contentRecord != null) {
+            throw new RuntimeException("存在未发布的草稿，请先发布后在操作");
+        }
+        ContentRecord contentRecordToRollback =
+            contentRecordRepository.findByPostIdAndVersion(postId, version);
+        decodeContentRecord(contentRecordToRollback);
+
+        Content content = contentRepository.getById(postId);
+        content.setContent(contentRecordToRollback.getContent());
+        content.setOriginalContent(contentRecordToRollback.getOriginalContent());
+        content.setContentRecordId(contentRecordToRollback.getVersion());
+        contentRepository.save(content);
+
+        Post post = postRepository.getById(postId);
+        post.setVersion(contentRecordToRollback.getVersion());
+        post.setPublishTime(LocalDateTime.now());
+        postRepository.save(post);
+
+        PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
+        postDTO.setContent(new ContentDTO().convertFrom(content));
+        return postDTO;
+    }
+
+    private ContentRecord decodeContentRecord(ContentRecord contentRecord) {
+        if(contentRecord.getVersion() != 1) {
+            ContentRecord baseContentRecord =
+                contentRecordRepository.findByPostIdAndVersion(contentRecord.getPostId(), 1);
+            contentRecord.setContent(restoreByPatchJson(contentRecord.getContent(),
+                baseContentRecord.getContent()));
+            contentRecord.setOriginalContent(restoreByPatchJson(contentRecord.getOriginalContent(),
+                baseContentRecord.getOriginalContent()));
+        }
+        return contentRecord;
     }
 
     private ContentRecord createContentRecordBy(Post post, Content content) {

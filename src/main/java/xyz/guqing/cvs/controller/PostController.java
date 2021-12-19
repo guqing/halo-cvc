@@ -2,6 +2,8 @@ package xyz.guqing.cvs.controller;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -16,8 +18,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xyz.guqing.cvs.model.dto.ContentDTO;
+import xyz.guqing.cvs.model.dto.ContentRecordDTO;
 import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
+import xyz.guqing.cvs.model.entity.ContentRecord;
 import xyz.guqing.cvs.model.entity.Post;
 import xyz.guqing.cvs.model.enums.PostStatus;
 import xyz.guqing.cvs.model.params.ContentParam;
@@ -85,6 +90,28 @@ public class PostController {
     public ResponseEntity<PostDTO> publish(@PathVariable Integer postId) {
         Post post = postService.publish(postId);
         return ResponseEntity.ok(convertTo(post));
+    }
+
+    @GetMapping("/{postId}/versions/contents")
+    public ResponseEntity<List<ContentRecordDTO>> listAllVersionsBy(@PathVariable Integer postId) {
+        List<ContentRecord> records = postService.listAllVersionsBy(postId);
+        List<ContentRecordDTO> results = records.stream()
+            .map(record -> (ContentRecordDTO) new ContentRecordDTO().convertFrom(record))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/contents/records/{id:\\d+}")
+    public ResponseEntity<ContentRecordDTO> getContentRecordById(@PathVariable Integer id) {
+        ContentRecord contentRecord = postService.getContentRecordById(id);
+        return ResponseEntity.ok(new ContentRecordDTO().convertFrom(contentRecord));
+    }
+
+    @PutMapping("/{postId:\\d+}/versions/{version:\\d+}/rollback")
+    public ResponseEntity<PostDetailDTO> rollbackToVersion(@PathVariable Integer postId,
+        @PathVariable Integer version) {
+        PostDetailDTO post = postService.rollbackByIdAndVersion(postId, version);
+        return ResponseEntity.ok(post);
     }
 
     private PostDTO convertTo(Post post) {
