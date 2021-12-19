@@ -13,4 +13,6 @@ import xyz.guqing.cvs.model.enums.PostStatus;
 public interface ContentRecordRepository extends JpaRepository<ContentRecord, Integer> {
 
     ContentRecord findFirstByPostIdAndStatusOrderByVersionDesc(Integer postId, PostStatus status);
+
+    ContentRecord findFirstByPostIdOrderByVersionDesc(Integer postId);
 }

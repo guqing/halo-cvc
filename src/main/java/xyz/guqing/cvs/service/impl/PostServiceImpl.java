@@ -43,17 +43,17 @@ public class PostServiceImpl implements PostService {
     public PostDetailDTO createOrUpdateDraftBy(PostParam postParam) {
         ContentParam contentParam = postParam.getContent();
 
+        // 1.判断是否有文章id,有则修改，否则创建
         if (postParam.getId() != null) {
             // 更新文章草稿
             Post postToUpdate = postRepository.getById(postParam.getId());
             postParam.update(postToUpdate);
 
-            // 更新内容草稿
-            Content contentToUpdate = contentRepository.getById(postParam.getId());
-            contentParam.update(contentToUpdate);
-
-            updateDraft(postToUpdate, contentToUpdate);
-            return convertTo(postToUpdate, contentToUpdate);
+            ContentRecord contentRecord = updateDraft(postToUpdate, contentParam);
+            Content content = new Content();
+            content.setContent(contentRecord.getContent());
+            content.setOriginalContent(contentRecord.getOriginalContent());
+            return convertTo(postToUpdate, content);
         }
         Post post = postParam.convertTo();
         Content content = postParam.getContent().convertTo();
@@ -62,84 +62,16 @@ public class PostServiceImpl implements PostService {
         return convertTo(post, content);
     }
 
-    @Override
-    public Page<Post> pageBy(Pageable pageable) {
-        return postRepository.findAll(pageable);
-    }
-
-    @Override
-    public Page<Post> pageBy(PostStatus status, Pageable pageable) {
-        return postRepository.findAllByStatus(status, pageable);
-    }
-
-    @Override
-    public Post updateDraftContent(Integer postId, ContentParam contentParam) {
-        // 更新最新的草稿(content_record)
-        Post post = postRepository.getById(postId);
-
-        // 更新内容草稿
-        Content contentToUpdate = contentRepository.getById(postId);
-        contentParam.update(contentToUpdate);
-
-        updateDraft(post, contentToUpdate);
-        return post;
-    }
-
-    @Override
-    @Transactional(rollbackOn = Exception.class)
-    public Post publish(Integer postId) {
-        Post post = postRepository.getById(postId);
-
+    private ContentRecord updateDraft(Post post, ContentParam content) {
         ContentRecord contentRecord =
-            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
+            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(post.getId(),
                 PostStatus.DRAFT);
-        contentRecord.setStatus(PostStatus.PUBLISHED);
-        contentRecord.setVersion(contentRecord.getVersion() + 1);
-        contentRecordRepository.save(contentRecord);
-
-        Content content = contentRepository.getById(postId);
-        content.setContentRecord(contentRecord);
-        content.setContent(contentRecord.getContent());
-        content.setOriginalContent(contentRecord.getOriginalContent());
-        contentRepository.save(content);
-
-        post.setVersion(contentRecord.getVersion());
-        post.setPublishTime(LocalDateTime.now());
-        post.setStatus(PostStatus.PUBLISHED);
-        postRepository.save(post);
-
-        return post;
-    }
-
-    @Override
-    public PostDetailDTO getById(Integer postId) {
-        Post post = postRepository.getById(postId);
-        Content content = contentRepository.getById(postId);
-        return convertTo(post, content);
-    }
-
-    private PostDetailDTO convertTo(Post post, Content content) {
-        PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
-
-        ContentDTO contentDTO = new ContentDTO();
-        contentDTO.setContent(content.getContent());
-        contentDTO.setOriginalContent(content.getOriginalContent());
-
-        postDTO.setContent(contentDTO);
-        return postDTO;
-    }
-
-    private void updateDraft(Post post, Content content) {
         // 更新当前版本的内容草稿历史
-        ContentRecord contentRecord = content.getContentRecord();
         contentRecord.setContent(content.getContent());
         contentRecord.setOriginalContent(content.getOriginalContent());
         contentRecord.setPostId(post.getId());
         contentRecordRepository.save(contentRecord);
-
-        // 更新当前版本的文章内容
-        content.setContentRecord(contentRecord);
-        contentRepository.save(content);
+        return contentRecord;
     }
 
     private void createDraft(Post post, Content content) {
@@ -162,12 +94,98 @@ public class PostServiceImpl implements PostService {
         contentRepository.save(content);
     }
 
+    @Override
+    public Page<Post> pageBy(Pageable pageable) {
+        return postRepository.findAll(pageable);
+    }
+
+    @Override
+    public Page<Post> pageBy(PostStatus status, Pageable pageable) {
+        return postRepository.findAllByStatus(status, pageable);
+    }
+
+    @Override
+    public Post updateDraftContent(Integer postId, ContentParam contentParam) {
+        // 更新最新的草稿(content_record)
+        Post post = postRepository.getById(postId);
+
+        updateDraft(post, contentParam);
+        return post;
+    }
+
+    @Override
+    @Transactional(rollbackOn = Exception.class)
+    public Post publish(Integer postId) {
+        Post post = postRepository.getById(postId);
+
+        ContentRecord contentRecord =
+            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
+                PostStatus.DRAFT);
+        contentRecord.setStatus(PostStatus.PUBLISHED);
+        contentRecordRepository.save(contentRecord);
+
+        Content content = contentRepository.getById(postId);
+        content.setContentRecord(contentRecord);
+        content.setContent(contentRecord.getContent());
+        content.setOriginalContent(contentRecord.getOriginalContent());
+        contentRepository.save(content);
+
+        post.setVersion(contentRecord.getVersion());
+        post.setPublishTime(LocalDateTime.now());
+        post.setStatus(PostStatus.PUBLISHED);
+        postRepository.save(post);
+
+        return post;
+    }
+
+    @Override
+    public PostDetailDTO getById(Integer postId) {
+        Post post = postRepository.getById(postId);
+        ContentRecord contentRecord =
+            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
+                PostStatus.DRAFT);
+        if (contentRecord == null) {
+            // 创建新草稿
+            Content content = contentRepository.getById(postId);
+            ContentRecord contentRecordToSave = createContentRecordBy(post, content);
+            ContentRecord latestRecord = contentRecordRepository.findFirstByPostIdOrderByVersionDesc(postId);
+            contentRecordToSave.setVersion(latestRecord.getVersion() + 1);
+            contentRecordToSave.setPostId(postId);
+            contentRecordToSave.setStatus(PostStatus.DRAFT);
+            contentRecordRepository.save(contentRecordToSave);
+
+            Content contentFromRecord = new Content();
+            contentFromRecord.setContent(contentFromRecord.getContent());
+            contentFromRecord.setOriginalContent(contentFromRecord.getOriginalContent());
+            return convertTo(post, contentFromRecord);
+        }
+        PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
+
+        ContentDTO contentDTO = new ContentDTO();
+        contentDTO.setContent(contentRecord.getContent());
+        contentDTO.setOriginalContent(contentRecord.getOriginalContent());
+
+        postDTO.setContent(contentDTO);
+        return postDTO;
+    }
+
+    private PostDetailDTO convertTo(Post post, Content content) {
+        PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
+
+        ContentDTO contentDTO = new ContentDTO();
+        contentDTO.setContent(content.getContent());
+        contentDTO.setOriginalContent(content.getOriginalContent());
+
+        postDTO.setContent(contentDTO);
+        return postDTO;
+    }
+
     private ContentRecord createContentRecordBy(Post post, Content content) {
         Assert.notNull(post, "The post must not be null.");
         Assert.notNull(content, "The content must not be null");
         ContentRecord contentRecord = new ContentRecord();
         BeanUtils.copyProperties(content, contentRecord);
-        //contentRecord.setPost(post);
+        contentRecord.setId(null);
         return contentRecord;
     }
 }
