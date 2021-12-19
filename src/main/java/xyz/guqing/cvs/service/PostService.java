@@ -26,4 +26,6 @@ public interface PostService {
     Post publish(Integer postId);
 
     PostDetailDTO getById(Integer postId);
+
+    PostDetailDTO getDraftById(Integer postId);
 }

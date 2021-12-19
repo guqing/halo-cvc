@@ -10,13 +10,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import javax.validation.constraints.NotNull;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
  * 当前正在使用版本的文章内容表.
@@ -36,10 +30,10 @@ public class Content {
     @MapsId
     private Post post;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "content_record_id", referencedColumnName = "id",
-        insertable = true, updatable = true, nullable = false)
-    private ContentRecord contentRecord;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "content_record_id", referencedColumnName = "id",
+//        insertable = true, updatable = true, nullable = false)
+    private Integer contentRecordId;
 
     private String content;
 

@@ -1,6 +1,11 @@
 package xyz.guqing.cvs.service.impl;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import javax.transaction.Transactional;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,8 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 import xyz.guqing.cvs.model.dto.ContentDTO;
-import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
 import xyz.guqing.cvs.model.entity.Content;
 import xyz.guqing.cvs.model.entity.ContentRecord;
@@ -21,6 +26,7 @@ import xyz.guqing.cvs.repository.ContentRecordRepository;
 import xyz.guqing.cvs.repository.ContentRepository;
 import xyz.guqing.cvs.repository.PostRepository;
 import xyz.guqing.cvs.service.PostService;
+import xyz.guqing.cvs.utils.PatchUtils;
 
 /**
  * @author guqing
@@ -28,7 +34,6 @@ import xyz.guqing.cvs.service.PostService;
  */
 @Service
 public class PostServiceImpl implements PostService {
-
     @Autowired
     private PostRepository postRepository;
 
@@ -42,24 +47,94 @@ public class PostServiceImpl implements PostService {
     @Transactional(rollbackOn = Exception.class)
     public PostDetailDTO createOrUpdateDraftBy(PostParam postParam) {
         ContentParam contentParam = postParam.getContent();
-
+        Integer postId = postParam.getId();
         // 1.判断是否有文章id,有则修改，否则创建
-        if (postParam.getId() != null) {
-            // 更新文章草稿
-            Post postToUpdate = postRepository.getById(postParam.getId());
-            postParam.update(postToUpdate);
+        if (postId != null) {
+            //1).判断草稿表是否有未发布的草稿内容
+            ContentRecord draftContentRecord =
+                contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(
+                    postId, PostStatus.DRAFT);
+            if (draftContentRecord != null) {
+                // 草稿版本是否为1
+                if (draftContentRecord.getVersion() == 1) {
+                    // 是v1直接修改内容
 
-            ContentRecord contentRecord = updateDraft(postToUpdate, contentParam);
-            Content content = new Content();
-            content.setContent(contentRecord.getContent());
-            content.setOriginalContent(contentRecord.getOriginalContent());
-            return convertTo(postToUpdate, content);
+                    updateVersionContent(draftContentRecord, contentParam.getContent(),
+                        contentParam.getOriginalContent());
+                } else {
+                    // 查询版本1的草稿
+                    ContentRecord baseContentRecord =
+                        contentRecordRepository.findByPostIdAndVersion(postId, 1);
+                    String content = diffToPatchString(baseContentRecord.getContent(),
+                        contentParam.getContent());
+                    String originalContent = diffToPatchString(baseContentRecord.getOriginalContent(),
+                        contentParam.getOriginalContent());
+                    updateVersionContent(draftContentRecord, content, originalContent);
+                }
+            } else {
+                createDraftContent(postParam.getId(), contentParam.getContent(),
+                    contentParam.getOriginalContent());
+            }
+            return null;
         }
         Post post = postParam.convertTo();
         Content content = postParam.getContent().convertTo();
         createDraft(post, content);
+        return null;
+    }
 
-        return convertTo(post, content);
+    private void createDraftContent(Integer postId, String contentParam, String originalContentParam) {
+        // 使用正式版的内容创建一份草稿
+        Post currentPost = postRepository.getById(postId);
+        ContentRecord contentRecord = new ContentRecord();
+        if(currentPost.getVersion() == 1 && PostStatus.DRAFT.equals(currentPost.getStatus())) {
+            contentRecord.setContent(contentParam);
+            contentRecord.setOriginalContent(originalContentParam);
+        } else {
+            ContentRecord baseContentRecord =
+                contentRecordRepository.findByPostIdAndVersion(postId, 1);
+
+            String contentToUse = diffToPatchString(baseContentRecord.getContent(),
+                contentParam);
+            String originalContentToUse = diffToPatchString(baseContentRecord.getOriginalContent(),
+                originalContentParam);
+            contentRecord.setContent(contentToUse);
+            contentRecord.setOriginalContent(originalContentToUse);
+        }
+        Content content = contentRepository.getById(postId);
+        contentRecord.setPostId(postId);
+        contentRecord.setStatus(PostStatus.DRAFT);
+        contentRecord.setSourceId(content.getContentRecordId());
+        contentRecord.setVersion(contentRecordRepository.findFirstByPostIdOrderByVersionDesc(postId).getVersion() + 1);
+        // 入库
+        contentRecordRepository.save(contentRecord);
+    }
+
+    private String restoreByPatchJson(String json, String original) {
+        Patch<String> patch = PatchUtils.create(json);
+        try {
+            return String.join("\n", patch.applyTo(breakLine(original)));
+        } catch (PatchFailedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String diffToPatchString(String original, String revised) {
+        Patch<String> patch = DiffUtils.diff(breakLine(original),
+            breakLine(revised));
+        return PatchUtils.patchToString(patch);
+    }
+
+    private List<String> breakLine(String content) {
+        String[] strings = StringUtils.tokenizeToStringArray(content, "\n");
+        return Arrays.asList(strings);
+    }
+
+    private void updateVersionContent(ContentRecord contentRecord,
+        String content, String originalContent) {
+        contentRecord.setContent(content);
+        contentRecord.setOriginalContent(originalContent);
+        contentRecordRepository.save(contentRecord);
     }
 
     private ContentRecord updateDraft(Post post, ContentParam content) {
@@ -90,7 +165,7 @@ public class PostServiceImpl implements PostService {
         contentRecord.setStatus(PostStatus.DRAFT);
         contentRecordRepository.save(contentRecord);
 
-        content.setContentRecord(contentRecord);
+        content.setContentRecordId(contentRecord.getId());
         contentRepository.save(content);
     }
 
@@ -125,9 +200,22 @@ public class PostServiceImpl implements PostService {
         contentRecordRepository.save(contentRecord);
 
         Content content = contentRepository.getById(postId);
-        content.setContentRecord(contentRecord);
-        content.setContent(contentRecord.getContent());
-        content.setOriginalContent(contentRecord.getOriginalContent());
+        content.setContentRecordId(contentRecord.getId());
+        if(contentRecord.getVersion() == 1) {
+            content.setContent(contentRecord.getContent());
+            content.setOriginalContent(contentRecord.getOriginalContent());
+        } else {
+            // 存在发布版本以后都是增量
+            ContentRecord baseContentRecord =
+                contentRecordRepository.findByPostIdAndVersion(postId, 1);
+            String actualContent = restoreByPatchJson(contentRecord.getContent(), baseContentRecord.getContent());
+            String actualOriginalContent = restoreByPatchJson(contentRecord.getOriginalContent(),
+                baseContentRecord.getOriginalContent());
+
+            content.setContent(actualContent);
+            content.setOriginalContent(actualOriginalContent);
+        }
+
         contentRepository.save(content);
 
         post.setVersion(contentRecord.getVersion());
@@ -135,46 +223,42 @@ public class PostServiceImpl implements PostService {
         post.setStatus(PostStatus.PUBLISHED);
         postRepository.save(post);
 
+        // 传入实际的内容
+        createDraftContent(postId, content.getContent(), content.getOriginalContent());
         return post;
     }
 
     @Override
     public PostDetailDTO getById(Integer postId) {
         Post post = postRepository.getById(postId);
-        ContentRecord contentRecord =
-            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
-                PostStatus.DRAFT);
-        if (contentRecord == null) {
-            // 创建新草稿
-            Content content = contentRepository.getById(postId);
-            ContentRecord contentRecordToSave = createContentRecordBy(post, content);
-            ContentRecord latestRecord = contentRecordRepository.findFirstByPostIdOrderByVersionDesc(postId);
-            contentRecordToSave.setVersion(latestRecord.getVersion() + 1);
-            contentRecordToSave.setPostId(postId);
-            contentRecordToSave.setStatus(PostStatus.DRAFT);
-            contentRecordRepository.save(contentRecordToSave);
-
-            Content contentFromRecord = new Content();
-            contentFromRecord.setContent(contentFromRecord.getContent());
-            contentFromRecord.setOriginalContent(contentFromRecord.getOriginalContent());
-            return convertTo(post, contentFromRecord);
-        }
+        Content content = contentRepository.getById(postId);
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
-
         ContentDTO contentDTO = new ContentDTO();
-        contentDTO.setContent(contentRecord.getContent());
-        contentDTO.setOriginalContent(contentRecord.getOriginalContent());
-
+        contentDTO.setContent(content.getContent());
+        contentDTO.setOriginalContent(content.getOriginalContent());
         postDTO.setContent(contentDTO);
         return postDTO;
     }
 
-    private PostDetailDTO convertTo(Post post, Content content) {
+    @Override
+    public PostDetailDTO getDraftById(Integer postId) {
+        Post post = postRepository.getById(postId);
+        ContentRecord contentRecord =
+            contentRecordRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
+                PostStatus.DRAFT);
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
-
         ContentDTO contentDTO = new ContentDTO();
-        contentDTO.setContent(content.getContent());
-        contentDTO.setOriginalContent(content.getOriginalContent());
+        if(contentRecord.getVersion() == 1) {
+            contentDTO.setContent(contentRecord.getContent());
+            contentDTO.setOriginalContent(contentRecord.getOriginalContent());
+        } else {
+            ContentRecord baseContentRecord =
+                contentRecordRepository.findByPostIdAndVersion(postId, 1);
+            contentDTO.setContent(restoreByPatchJson(contentRecord.getContent(),
+                baseContentRecord.getContent()));
+            contentDTO.setOriginalContent(restoreByPatchJson(contentRecord.getOriginalContent(),
+                baseContentRecord.getOriginalContent()));
+        }
 
         postDTO.setContent(contentDTO);
         return postDTO;

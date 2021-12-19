@@ -65,6 +65,12 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
+    @GetMapping("/{postId:\\d+}/drafts")
+    public ResponseEntity<PostDetailDTO> getDraftById(@PathVariable Integer postId) {
+        PostDetailDTO post = postService.getDraftById(postId);
+        return ResponseEntity.ok(post);
+    }
+
     @PutMapping("{postId:\\d+}/status/draft/content")
     public PostDetailDTO updateDraftBy(
         @PathVariable("postId") Integer postId,

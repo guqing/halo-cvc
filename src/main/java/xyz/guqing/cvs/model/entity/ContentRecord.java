@@ -7,7 +7,6 @@ import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.ColumnDefault;
 import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
@@ -33,17 +32,20 @@ public class ContentRecord extends BaseEntity {
     private PostStatus status;
 
     /**
-     * 该版本的发源地，例如该版本基于v1创建，源头就是v1
-     * v1的源头是0
+     * 该版本的发源地，例如该版本基于v1创建，源头就是v1 v1的源头是0
      */
-    @ColumnDefault("0")
+    @NotNull
     private Integer sourceId;
 
     @Override
     protected void prePersist() {
         super.prePersist();
-        if(version == null) {
+        if (version == null) {
             version = 1;
+        }
+
+        if (sourceId == null) {
+            sourceId = 0;
         }
     }
 }

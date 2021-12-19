@@ -15,4 +15,6 @@ public interface ContentRecordRepository extends JpaRepository<ContentRecord, In
     ContentRecord findFirstByPostIdAndStatusOrderByVersionDesc(Integer postId, PostStatus status);
 
     ContentRecord findFirstByPostIdOrderByVersionDesc(Integer postId);
+
+    ContentRecord findByPostIdAndVersion(Integer postId, Integer version);
 }
