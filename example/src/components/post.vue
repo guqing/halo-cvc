@@ -26,11 +26,11 @@
     </a-row>
 
     <a-row :gutter="12" style="margin-top: 30px">
-      <a-col :span="12">
+      <a-col :span="8">
         管理后台文章列表
         <a-list :data-source="backend.posts" :pagination="backend.pagination">
           <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
-            <p>
+            <div @click="listAllContentVersions(item.id)">
               {{ item.id }} - {{ item.title }} - {{ item.version }}
               <a
                 slot="actions"
@@ -39,11 +39,35 @@
               >
                 edit
               </a>
-            </p>
+            </div>
           </a-list-item>
         </a-list>
       </a-col>
-      <a-col :span="12">
+      <a-col :span="8">
+        文章版本列表
+        <a-list :data-source="backend.versions">
+          <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
+            <div>
+              version:{{ item.version }} - sourceId:{{ item.sourceId }}
+              <a
+                slot="actions"
+                style="margin-left: 15px"
+                @click="getContentRecord(item.id)"
+              >
+                查看
+              </a>
+              <a
+                slot="actions"
+                style="margin-left: 15px"
+                @click="rollbackToVersion(item.postId, item.version)"
+              >
+                回退
+              </a>
+            </div>
+          </a-list-item>
+        </a-list>
+      </a-col>
+      <a-col :span="8">
         前台文章列表
         <a-list :data-source="frontend.posts" :pagination="frontend.pagination">
           <a-list-item slot="renderItem" slot-scope="item">
@@ -81,6 +105,7 @@ export default {
     return {
       backend: {
         posts: [],
+        versions: [],
         pagination: {
           onChange: (page) => {
             console.log(page);
@@ -143,11 +168,34 @@ export default {
         content: val,
       };
     },
+    listAllContentVersions(postId) {
+      postApi.listAllContentVersions(postId).then((res) => {
+        console.log(res);
+        this.backend.versions = res.data;
+      });
+    },
     handlePublish() {
       postApi.publish(this.postToStage.id).then((res) => {
         console.log(res);
         this.$message.success("发布成功");
         this.listAllPostsByPage();
+      });
+    },
+    getContentRecord(id) {
+      postApi.getContentRecordById(id).then((res) => {
+        console.log(res);
+        const { content, originalContent, postId } = res.data;
+        this.postToStage.id = postId;
+        this.postToStage.content = {
+          content,
+          originalContent,
+        };
+      });
+    },
+    rollbackToVersion(postId, version) {
+      postApi.rollbackToVersion(postId, version).then((res) => {
+        this.postToStage = res.data;
+        this.$message.success("回退成功");
       });
     },
   },

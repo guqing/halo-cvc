@@ -54,4 +54,25 @@ postApi.publish = (postId) => {
     method: "post",
   });
 };
+
+postApi.listAllContentVersions = (postId) => {
+  return axios({
+    url: `/posts/${postId}/versions/contents`,
+    method: "get",
+  });
+};
+
+postApi.getContentRecordById = (contentRecordId) => {
+  return axios({
+    url: `/posts/contents/records/${contentRecordId}`,
+    method: "get",
+  });
+};
+
+postApi.rollbackToVersion = (postId, version) => {
+  return axios({
+    url: `/posts/${postId}/versions/${version}/rollback`,
+    method: "put",
+  });
+};
 export default postApi;
