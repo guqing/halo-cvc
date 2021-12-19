@@ -17,6 +17,13 @@ postApi.getById = (id) => {
   });
 };
 
+postApi.getDraftById = (id) => {
+  return axios({
+    url: `/posts/${id}/drafts`,
+    method: "get",
+  });
+};
+
 postApi.list = (params) => {
   return axios({
     url: "/posts",

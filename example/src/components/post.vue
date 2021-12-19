@@ -31,11 +31,11 @@
         <a-list :data-source="backend.posts" :pagination="backend.pagination">
           <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
             <p>
-              {{ item.id }} - {{ item.title }}
+              {{ item.id }} - {{ item.title }} - {{ item.version }}
               <a
                 slot="actions"
                 style="margin-left: 15px"
-                @click="getById(item.id)"
+                @click="getDraftById(item.id)"
               >
                 edit
               </a>
@@ -48,8 +48,13 @@
         <a-list :data-source="frontend.posts" :pagination="frontend.pagination">
           <a-list-item slot="renderItem" slot-scope="item">
             <p>
-              {{ item.id }} - {{ item.title }}
-              <a slot="actions" style="margin-left: 15px">edit</a>
+              {{ item.id }} - {{ item.title }} - {{ item.version }}
+              <a
+                slot="actions"
+                style="margin-left: 15px"
+                @click="getById(item.id)"
+                >edit</a
+              >
             </p>
           </a-list-item>
         </a-list>
@@ -126,6 +131,11 @@ export default {
         this.postToStage = res.data;
       });
     },
+    getDraftById(postId) {
+      postApi.getDraftById(postId).then((res) => {
+        this.postToStage = res.data;
+      });
+    },
     onContentChange(val) {
       this.contentChanges++;
       this.postToStage.content = {
@@ -136,6 +146,8 @@ export default {
     handlePublish() {
       postApi.publish(this.postToStage.id).then((res) => {
         console.log(res);
+        this.$message.success("发布成功");
+        this.listAllPostsByPage();
       });
     },
   },
