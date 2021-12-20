@@ -3,8 +3,8 @@ package xyz.guqing.cvs.service.impl;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
-import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import javax.transaction.Transactional;
 import org.springframework.beans.BeanUtils;
@@ -222,7 +222,7 @@ public class PostServiceImpl implements PostService {
         contentRepository.save(content);
 
         post.setVersion(contentRecord.getVersion());
-        post.setPublishTime(LocalDateTime.now());
+        post.setPublishTime(new Date());
         post.setStatus(PostStatus.PUBLISHED);
         postRepository.save(post);
         return post;
@@ -286,7 +286,7 @@ public class PostServiceImpl implements PostService {
 
         Post post = postRepository.getById(postId);
         post.setVersion(contentRecordToRollback.getVersion());
-        post.setPublishTime(LocalDateTime.now());
+        post.setPublishTime(new Date());
         postRepository.save(post);
 
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);

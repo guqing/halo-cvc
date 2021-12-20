@@ -1,16 +1,19 @@
 package xyz.guqing.cvs.model.entity;
 
+import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-
 import javax.persistence.MapsId;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import lombok.Data;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.ToString.Exclude;
+import org.hibernate.Hibernate;
 
 /**
  * 当前正在使用版本的文章内容表.
@@ -18,7 +21,10 @@ import lombok.Data;
  * @author guqing
  * @date 2021-12-18
  */
-@Data
+@Getter
+@Setter
+@ToString
+@RequiredArgsConstructor
 @Entity
 @Table(name = "contents")
 public class Content {
@@ -28,14 +34,30 @@ public class Content {
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
+    @Exclude
     private Post post;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "content_record_id", referencedColumnName = "id",
-//        insertable = true, updatable = true, nullable = false)
     private Integer contentRecordId;
 
     private String content;
 
     private String originalContent;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(
+            o)) {
+            return false;
+        }
+        Content content = (Content) o;
+        return id != null && Objects.equals(id, content.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

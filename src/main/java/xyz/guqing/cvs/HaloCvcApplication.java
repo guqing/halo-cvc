@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class HaloCvsApplication {
+public class HaloCvcApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(HaloCvsApplication.class, args);
+        SpringApplication.run(HaloCvcApplication.class, args);
     }
 
 }

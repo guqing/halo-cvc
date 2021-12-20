@@ -1,6 +1,6 @@
 package xyz.guqing.cvs.model.dto;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import lombok.Data;
 import xyz.guqing.cvs.model.entity.Post;
 import xyz.guqing.cvs.model.support.OutputConverter;
@@ -16,7 +16,7 @@ public class PostDTO implements OutputConverter<PostDTO, Post> {
 
     private String title;
 
-    private LocalDateTime createTime;
+    private Date createTime;
 
     private String status;
 
