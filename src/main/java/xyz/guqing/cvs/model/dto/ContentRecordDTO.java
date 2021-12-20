@@ -1,7 +1,7 @@
 package xyz.guqing.cvs.model.dto;
 
 import lombok.Data;
-import xyz.guqing.cvs.model.entity.ContentRecord;
+import xyz.guqing.cvs.model.entity.ContentPatchLog;
 import xyz.guqing.cvs.model.support.OutputConverter;
 
 /**
@@ -9,7 +9,7 @@ import xyz.guqing.cvs.model.support.OutputConverter;
  * @date 2021-12-19
  */
 @Data
-public class ContentRecordDTO implements OutputConverter<ContentRecordDTO, ContentRecord> {
+public class ContentRecordDTO implements OutputConverter<ContentRecordDTO, ContentPatchLog> {
 
     private Integer id;
 

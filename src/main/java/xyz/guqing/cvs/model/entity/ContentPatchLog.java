@@ -1,10 +1,13 @@
 package xyz.guqing.cvs.model.entity;
 
+import java.util.Date;
 import java.util.Objects;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,20 +25,23 @@ import xyz.guqing.cvs.model.enums.PostStatus;
 @ToString
 @RequiredArgsConstructor
 @Entity
-@Table(name = "content_records")
-public class ContentRecord extends BaseEntity {
+@Table(name = "content_patch_logs")
+public class ContentPatchLog extends BaseEntity {
 
     private Integer postId;
 
-    private String content;
+    private String contentDiff;
 
-    private String originalContent;
+    private String originalContentDiff;
 
     @NotNull
     private Integer version;
 
     @Enumerated(EnumType.STRING)
     private PostStatus status;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date publishTime;
 
     /**
      * 该版本的发源地，例如该版本基于v1创建，源头就是v1 v1的源头是0
@@ -64,7 +70,7 @@ public class ContentRecord extends BaseEntity {
             o)) {
             return false;
         }
-        ContentRecord that = (ContentRecord) o;
+        ContentPatchLog that = (ContentPatchLog) o;
         return getId() != null && Objects.equals(getId(), that.getId());
     }
 

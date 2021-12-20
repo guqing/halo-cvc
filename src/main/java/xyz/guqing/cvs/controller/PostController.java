@@ -18,15 +18,16 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xyz.guqing.cvs.model.dto.ContentDTO;
 import xyz.guqing.cvs.model.dto.ContentRecordDTO;
 import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
-import xyz.guqing.cvs.model.entity.ContentRecord;
+import xyz.guqing.cvs.model.entity.ContentPatchLog;
 import xyz.guqing.cvs.model.entity.Post;
 import xyz.guqing.cvs.model.enums.PostStatus;
 import xyz.guqing.cvs.model.params.ContentParam;
 import xyz.guqing.cvs.model.params.PostParam;
+import xyz.guqing.cvs.model.support.PatchedContent;
+import xyz.guqing.cvs.service.ContentPatchLogService;
 import xyz.guqing.cvs.service.PostService;
 
 /**
@@ -40,24 +41,24 @@ public class PostController {
 
     @Autowired
     private PostService postService;
+    @Autowired
+    private ContentPatchLogService contentPatchLogService;
 
     @PostMapping
-    public ResponseEntity<PostDetailDTO> draftPost(@Valid @RequestBody PostParam postParam) {
-        PostDetailDTO postDetail = postService.createOrUpdateDraftBy(postParam);
-        return ResponseEntity.ok(postDetail);
+    public ResponseEntity<PostDTO> draftPost(@Valid @RequestBody PostParam postParam) {
+        PostDTO postDTO = postService.createOrUpdateDraftBy(postParam);
+        return ResponseEntity.ok(postDTO);
     }
 
     @GetMapping
     public ResponseEntity<Page<PostDTO>> pageBy(
-        @PageableDefault(sort = "createTime", direction = DESC)
-            Pageable pageable) {
+        @PageableDefault(sort = "createTime", direction = DESC) Pageable pageable) {
         Page<Post> postPage = postService.pageBy(pageable);
         return ResponseEntity.ok(postPage.map(this::convertTo));
     }
 
     @GetMapping("status/{status}")
-    public ResponseEntity<Page<PostDTO>> pageByStatus(
-        @PathVariable(name = "status") String status,
+    public ResponseEntity<Page<PostDTO>> pageByStatus(@PathVariable(name = "status") String status,
         @PageableDefault(sort = "createTime", direction = DESC) Pageable pageable) {
         PostStatus postStatus = PostStatus.valueOf(status);
         Page<Post> posts = postService.pageBy(postStatus, pageable);
@@ -77,8 +78,7 @@ public class PostController {
     }
 
     @PutMapping("{postId:\\d+}/status/draft/content")
-    public PostDetailDTO updateDraftBy(
-        @PathVariable("postId") Integer postId,
+    public PostDetailDTO updateDraftBy(@PathVariable("postId") Integer postId,
         @RequestBody ContentParam contentParam) {
         // Update draft content
         Post post = postService.updateDraftContent(postId, contentParam);
@@ -94,7 +94,7 @@ public class PostController {
 
     @GetMapping("/{postId}/versions/contents")
     public ResponseEntity<List<ContentRecordDTO>> listAllVersionsBy(@PathVariable Integer postId) {
-        List<ContentRecord> records = postService.listAllVersionsBy(postId);
+        List<ContentPatchLog> records = postService.listAllVersionsBy(postId);
         List<ContentRecordDTO> results = records.stream()
             .map(record -> (ContentRecordDTO) new ContentRecordDTO().convertFrom(record))
             .collect(Collectors.toList());
@@ -103,8 +103,12 @@ public class PostController {
 
     @GetMapping("/contents/records/{id:\\d+}")
     public ResponseEntity<ContentRecordDTO> getContentRecordById(@PathVariable Integer id) {
-        ContentRecord contentRecord = postService.getContentRecordById(id);
-        return ResponseEntity.ok(new ContentRecordDTO().convertFrom(contentRecord));
+        ContentPatchLog contentPatchLog = contentPatchLogService.getById(id);
+        PatchedContent patchedContent = contentPatchLogService.applyPatch(contentPatchLog);
+        ContentRecordDTO contentRecordDTO = new ContentRecordDTO().convertFrom(contentPatchLog);
+        contentRecordDTO.setContent(patchedContent.getContent());
+        contentRecordDTO.setOriginalContent(patchedContent.getOriginalContent());
+        return ResponseEntity.ok(contentRecordDTO);
     }
 
     @PutMapping("/{postId:\\d+}/versions/{version:\\d+}/rollback")

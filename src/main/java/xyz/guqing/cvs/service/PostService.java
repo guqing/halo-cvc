@@ -3,10 +3,9 @@ package xyz.guqing.cvs.service;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import xyz.guqing.cvs.model.dto.ContentRecordDTO;
+import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
-import xyz.guqing.cvs.model.entity.Content;
-import xyz.guqing.cvs.model.entity.ContentRecord;
+import xyz.guqing.cvs.model.entity.ContentPatchLog;
 import xyz.guqing.cvs.model.entity.Post;
 import xyz.guqing.cvs.model.enums.PostStatus;
 import xyz.guqing.cvs.model.params.ContentParam;
@@ -18,7 +17,7 @@ import xyz.guqing.cvs.model.params.PostParam;
  */
 public interface PostService {
 
-    PostDetailDTO createOrUpdateDraftBy(PostParam postParam);
+    PostDTO createOrUpdateDraftBy(PostParam postParam);
 
     Page<Post> pageBy(Pageable pageable);
 
@@ -32,9 +31,7 @@ public interface PostService {
 
     PostDetailDTO getDraftById(Integer postId);
 
-    List<ContentRecord> listAllVersionsBy(Integer postId);
-
-    ContentRecord getContentRecordById(Integer contentRecordId);
+    List<ContentPatchLog> listAllVersionsBy(Integer postId);
 
     PostDetailDTO rollbackByIdAndVersion(Integer postId, Integer version);
 }

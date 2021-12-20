@@ -1,6 +1,7 @@
 package xyz.guqing.cvs.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.AbstractDelta;
 import com.github.difflib.patch.ChangeDelta;
 import com.github.difflib.patch.Chunk;
@@ -8,8 +9,11 @@ import com.github.difflib.patch.DeleteDelta;
 import com.github.difflib.patch.DeltaType;
 import com.github.difflib.patch.InsertDelta;
 import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
+import java.util.Arrays;
 import java.util.List;
 import lombok.Data;
+import org.springframework.util.StringUtils;
 
 /**
  * @author guqing
@@ -47,6 +51,26 @@ public class PatchUtils {
     public static String patchToString(Patch<String> patch) {
         List<AbstractDelta<String>> deltas = patch.getDeltas();
         return JsonUtils.objectToString(deltas);
+    }
+
+    public static String restoreContent(String json, String original) {
+        Patch<String> patch = PatchUtils.create(json);
+        try {
+            return String.join("\n", patch.applyTo(breakLine(original)));
+        } catch (PatchFailedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String diffToPatchString(String original, String revised) {
+        Patch<String> patch = DiffUtils.diff(breakLine(original),
+            breakLine(revised));
+        return PatchUtils.patchToString(patch);
+    }
+
+    public static List<String> breakLine(String content) {
+        String[] strings = StringUtils.tokenizeToStringArray(content, "\n");
+        return Arrays.asList(strings);
     }
 
     @Data
