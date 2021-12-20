@@ -12,3 +12,9 @@ Halo 文章内容版本管理(content version control)示例
 
 创建或更新文章草稿流程：
 ![创建或更新文章草稿](./docs/asserts/创建或更新文章草稿.png)
+
+版本 HEAD 切换：
+- 创建时指向 v1 的 patchLogId
+- 修改时指向草稿的 patchLogId
+- 发布时指向当前的 patchLogId
+- 版本回退时指向回退版本的 patchLogId

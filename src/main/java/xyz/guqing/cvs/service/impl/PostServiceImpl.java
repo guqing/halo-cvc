@@ -49,13 +49,19 @@ public class PostServiceImpl implements PostService {
         Integer postId = postParam.getId();
         // 1.判断是否有文章id,有则修改，否则创建
         if (postId != null) {
-            Post post = postRepository.getById(postId);
-            postParam.update(post);
-            postRepository.save(post);
 
             //1).判断草稿表是否有未发布的草稿内容
-            contentPatchLogService.createOrUpdate(postId, contentParam.getContent(),
-                contentParam.getOriginalContent());
+            ContentPatchLog contentPatchLog =
+                contentPatchLogService.createOrUpdate(postId, contentParam.getContent(),
+                    contentParam.getOriginalContent());
+
+            Post post = postRepository.getById(postId);
+            postParam.update(post);
+
+            // 更新头指针
+            post.setContentHeadRef(contentPatchLog.getId());
+            postRepository.save(post);
+
             return new PostDTO().convertFrom(post);
         }
         Post postCreated = createDraft(postParam.convertTo(), contentParam.convertTo());
@@ -71,18 +77,23 @@ public class PostServiceImpl implements PostService {
         // 3. 保存到文章内容当前版本表(content)
         // 3. 更新文章中的contentId
         post.setStatus(PostStatus.DRAFT);
+        post.setContentHeadRef(0);
         postRepository.save(post);
 
-        ContentPatchLog contentRecord = new ContentPatchLog();
+        ContentPatchLog contentPatchLog = new ContentPatchLog();
         // 初次创建不存在v1所以直接使用原始内容
-        contentRecord.setContentDiff(content.getContent());
-        contentRecord.setOriginalContentDiff(content.getOriginalContent());
-        contentRecord.setPostId(post.getId());
-        contentRecord.setStatus(PostStatus.DRAFT);
-        contentPatchLogRepository.save(contentRecord);
+        contentPatchLog.setContentDiff(content.getContent());
+        contentPatchLog.setOriginalContentDiff(content.getOriginalContent());
+        contentPatchLog.setPostId(post.getId());
+        contentPatchLog.setStatus(PostStatus.DRAFT);
+        contentPatchLogRepository.save(contentPatchLog);
 
-        content.setContentRecordId(contentRecord.getId());
+        content.setContentRecordId(contentPatchLog.getId());
         contentRepository.save(content);
+
+        // 更新头指针
+        post.setContentHeadRef(contentPatchLog.getId());
+        postRepository.save(post);
         return post;
     }
 
@@ -125,13 +136,14 @@ public class PostServiceImpl implements PostService {
 
         PatchedContent patchedContent = contentPatchLogService.applyPatch(contentPatchLog);
         content.setContent(patchedContent.getContent());
-        content.setContent(patchedContent.getOriginalContent());
+        content.setOriginalContent(patchedContent.getOriginalContent());
 
         contentRepository.save(content);
 
         post.setVersion(contentPatchLog.getVersion());
         post.setPublishTime(new Date());
         post.setStatus(PostStatus.PUBLISHED);
+        post.setContentHeadRef(contentPatchLog.getId());
         postRepository.save(post);
         return post;
     }
@@ -151,8 +163,9 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostDetailDTO getDraftById(Integer postId) {
         Post post = postRepository.getById(postId);
+        // 使用post中存储的head指针
         ContentPatchLog contentRecord =
-            contentPatchLogRepository.findFirstByPostIdOrderByVersionDesc(postId);
+            contentPatchLogRepository.getById(post.getContentHeadRef());
 
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
 
@@ -193,7 +206,8 @@ public class PostServiceImpl implements PostService {
 
         Post post = postRepository.getById(postId);
         post.setVersion(contentRecordToRollback.getVersion());
-        post.setPublishTime(new Date());
+        post.setPublishTime(contentRecordToRollback.getPublishTime());
+        post.setContentHeadRef(contentRecordToRollback.getId());
         postRepository.save(post);
 
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);

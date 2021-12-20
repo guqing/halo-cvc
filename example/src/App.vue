@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import Post from "./components/post.vue";
+import Post from "./views/post.vue";
 
 export default {
   name: "App",
