@@ -76,7 +76,7 @@ public class PostServiceImpl implements PostService {
         ContentPatchLog contentRecord = new ContentPatchLog();
         // 初次创建不存在v1所以直接使用原始内容
         contentRecord.setContentDiff(content.getContent());
-        contentRecord.setContentDiff(content.getOriginalContent());
+        contentRecord.setOriginalContentDiff(content.getOriginalContent());
         contentRecord.setPostId(post.getId());
         contentRecord.setStatus(PostStatus.DRAFT);
         contentPatchLogRepository.save(contentRecord);
@@ -113,6 +113,9 @@ public class PostServiceImpl implements PostService {
         ContentPatchLog contentPatchLog =
             contentPatchLogRepository.findFirstByPostIdAndStatusOrderByVersionDesc(postId,
                 PostStatus.DRAFT);
+        if (contentPatchLog == null) {
+            throw new RuntimeException("没有需要发布的草稿，请先保存");
+        }
         contentPatchLog.setStatus(PostStatus.PUBLISHED);
         contentPatchLog.setPublishTime(new Date());
         contentPatchLogRepository.save(contentPatchLog);

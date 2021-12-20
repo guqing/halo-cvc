@@ -31,11 +31,12 @@
         <a-list :data-source="backend.posts" :pagination="backend.pagination">
           <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
             <div @click="listAllContentVersions(item.id)">
-              {{ item.id }} - {{ item.title }} - {{ item.version }}
+              id:{{ item.id }} - title:{{ item.title }} - version:{{ item.version }} - status:
+              {{ item.status === 'DRAFT' ? '草稿' : '已发布' }}
               <a
-                slot="actions"
-                style="margin-left: 15px"
-                @click="getDraftById(item.id)"
+                  slot="actions"
+                  style="margin-left: 15px"
+                  @click="getDraftById(item.id)"
               >
                 edit
               </a>
@@ -89,7 +90,7 @@
 
 <script>
 import MarkdownEditor from "./MarkdownEditor.vue";
-import { PageView } from "@/layouts";
+import {PageView} from "@/layouts";
 import postApi from "@/api/post";
 
 export default {
@@ -148,6 +149,9 @@ export default {
       }
       postApi.draftPost(this.postToStage).then(() => {
         this.$message.success("保存成功");
+        this.postToStage = {
+          content: {}
+        }
         this.listAllPostsByPage();
       });
     },
@@ -179,6 +183,10 @@ export default {
         console.log(res);
         this.$message.success("发布成功");
         this.listAllPostsByPage();
+        this.listPublishedPosts();
+        this.postToStage = {
+          content: {}
+        }
       });
     },
     getContentRecord(id) {

@@ -47,7 +47,7 @@ public class ContentPatchLogServiceImpl implements ContentPatchLogService {
         String originalContentParam) {
         Post post = postRepository.getById(postId);
         ContentPatchLog contentPatchLog = new ContentPatchLog();
-        if (post.getVersion() == 1) {
+        if (post.getVersion() == 1 && PostStatus.DRAFT.equals(post.getStatus())) {
             contentPatchLog.setContentDiff(contentParam);
             contentPatchLog.setOriginalContentDiff(originalContentParam);
         } else {
@@ -111,13 +111,13 @@ public class ContentPatchLogServiceImpl implements ContentPatchLogService {
         ContentPatchLog baseContentRecord =
             contentPatchLogRepository.findByPostIdAndVersion(contentRecord.getPostId(), 1);
 
-        String content = PatchUtils.diffToPatchString(baseContentRecord.getContentDiff(),
-            contentRecord.getContentDiff());
+        String content = PatchUtils.restoreContent(
+            contentRecord.getContentDiff(), baseContentRecord.getContentDiff());
         patchedContent.setContent(content);
 
         String originalContent =
-            PatchUtils.diffToPatchString(baseContentRecord.getOriginalContentDiff(),
-                contentRecord.getOriginalContentDiff());
+            PatchUtils.restoreContent(contentRecord.getOriginalContentDiff(),
+                baseContentRecord.getOriginalContentDiff());
         patchedContent.setOriginalContent(originalContent);
         return patchedContent;
     }
@@ -136,7 +136,7 @@ public class ContentPatchLogServiceImpl implements ContentPatchLogService {
         String originalContentChanges =
             PatchUtils.diffToPatchString(baseContentRecord.getOriginalContentDiff(),
                 originalContent);
-        contentDiff.setContent(originalContentChanges);
+        contentDiff.setOriginalContent(originalContentChanges);
         return contentDiff;
     }
 }

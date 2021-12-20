@@ -119,6 +119,8 @@ public class PostController {
     }
 
     private PostDTO convertTo(Post post) {
-        return new PostDTO().convertFrom(post);
+        PostDTO postDTO = new PostDTO().convertFrom(post);
+        postDTO.setStatus(post.getStatus().name());
+        return postDTO;
     }
 }
