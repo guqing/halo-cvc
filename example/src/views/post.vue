@@ -30,6 +30,10 @@
           style="text-align: left"
         ></div>
       </a-col>
+      <a-col :span="12" v-if="diffVisible">
+        <content-diff />
+      </a-col>
+
       <a-col :span="12">
         <a-tabs default-active-key="1" @change="onTabChange">
           <a-tab-pane key="1" tab="管理后台">
@@ -76,6 +80,7 @@ import MarkdownEditor from "../components/MarkdownEditor.vue";
 import { PageView } from "@/layouts";
 import postApi from "@/api/post";
 import PostList from "../components/PostList.vue";
+import ContentDiff from "../components/ContentDiff.vue";
 
 const postColumns = [
   {
@@ -144,10 +149,12 @@ export default {
     MarkdownEditor,
     PostList,
     PageView,
+    ContentDiff,
   },
   data() {
     return {
       editorVisible: true,
+      diffVisible: false,
       backend: {
         columns: postColumns,
         posts: [],
@@ -175,6 +182,9 @@ export default {
   methods: {
     onTabChange(val) {
       this.editorVisible = val === "1";
+      if (this.editorVisible) {
+        this.diffVisible = false;
+      }
     },
     listAllPostsByPage() {
       postApi.list().then((res) => {
@@ -237,8 +247,9 @@ export default {
       });
     },
     getContentRecord(id) {
+      this.diffVisible = true;
+      this.editorVisible = false;
       postApi.getContentRecordById(id).then((res) => {
-        console.log(res);
         const { content, originalContent, postId } = res.data;
         this.postToStage.id = postId;
         this.postToStage.content = {

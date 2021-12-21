@@ -11,6 +11,7 @@
     "ant-design-vue": "^1.7.8",
     "axios": "^0.24.0",
     "core-js": "^3.6.5",
+    "diff2html": "^3.4.13",
     "halo-editor": "^2.8.3",
     "vue": "^2.6.11",
     "vue-router": "^3.5.3"

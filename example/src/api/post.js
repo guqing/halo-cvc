@@ -75,4 +75,10 @@ postApi.rollbackToVersion = (postId, version) => {
     method: "put",
   });
 };
+postApi.getContentDiff = (postId, version) => {
+  return axios({
+    url: `/${postId}/versions/${version}/diffs`,
+    method: "get",
+  });
+};
 export default postApi;
