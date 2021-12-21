@@ -40,6 +40,12 @@ public class Post extends BaseEntity {
     @Temporal(TemporalType.TIMESTAMP)
     private Date publishTime;
 
+    /**
+     * 版本头指向content patch log记录的主键id
+     */
+    @NotNull
+    private Integer contentHeadRef;
+
     @Override
     protected void prePersist() {
         super.prePersist();

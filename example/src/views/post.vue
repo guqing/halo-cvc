@@ -2,8 +2,8 @@
   <page-view :title="postToStage.title ? postToStage.title : '新文章'" affix>
     <template slot="extra">
       <a-space>
-        <a-button @click="handleSaveDraft"> 保存 </a-button>
-        <a-button type="primary" @click="handlePublish"> 发布 </a-button>
+        <a-button @click="handleSaveDraft"> 保存</a-button>
+        <a-button type="primary" @click="handlePublish"> 发布</a-button>
       </a-space>
     </template>
     <a-row :gutter="12">
@@ -26,72 +26,111 @@
     </a-row>
 
     <a-row :gutter="12" style="margin-top: 30px">
-      <a-col :span="8">
-        管理后台文章列表
-        <a-list :data-source="backend.posts" :pagination="backend.pagination">
-          <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
-            <div @click="listAllContentVersions(item.id)">
-              id:{{ item.id }} - title:{{ item.title }} - version:{{ item.version }} - status:
-              {{ item.status === 'DRAFT' ? '草稿' : '已发布' }}
-              <a
-                  slot="actions"
-                  style="margin-left: 15px"
-                  @click="getDraftById(item.id)"
-              >
-                edit
-              </a>
-            </div>
-          </a-list-item>
-        </a-list>
-      </a-col>
-      <a-col :span="8">
-        文章版本列表
-        <a-list :data-source="backend.versions">
-          <a-list-item slot="renderItem" slot-scope="item" style="width: 100%">
-            <div>
-              version:{{ item.version }} - sourceId:{{ item.sourceId }}
-              <a
-                slot="actions"
-                style="margin-left: 15px"
-                @click="getContentRecord(item.id)"
-              >
-                查看
-              </a>
-              <a
-                slot="actions"
-                style="margin-left: 15px"
-                @click="rollbackToVersion(item.postId, item.version)"
-              >
-                回退
-              </a>
-            </div>
-          </a-list-item>
-        </a-list>
-      </a-col>
-      <a-col :span="8">
-        前台文章列表
-        <a-list :data-source="frontend.posts" :pagination="frontend.pagination">
-          <a-list-item slot="renderItem" slot-scope="item">
-            <p>
-              {{ item.id }} - {{ item.title }} - {{ item.version }}
-              <a
-                slot="actions"
-                style="margin-left: 15px"
-                @click="getById(item.id)"
-                >edit</a
-              >
-            </p>
-          </a-list-item>
-        </a-list>
-      </a-col>
+      <a-tabs default-active-key="1">
+        <a-tab-pane key="1" tab="管理后台">
+          <a-row :gutter="12" style="margin-top: 30px">
+            <a-col :span="12">
+              文章列表
+              <PostList
+                :data-source="backend.posts"
+                scene="backend"
+                :columns="backend.columns"
+                @onView="(record) => getDraftById(record.id)"
+                @onChangeLog="(record) => listAllContentVersions(record.id)"
+                @onEdit="(record) => getDraftById(record.id)"
+              />
+            </a-col>
+
+            <a-col :span="12">
+              文章版本
+              <PostList
+                :data-source="changelogs.data"
+                :columns="changelogs.columns"
+                @onView="(record) => getContentRecord(record.id)"
+                @onRollback="
+                  (record) => rollbackToVersion(record.postId, record.version)
+                "
+                scene="changelog"
+              />
+            </a-col>
+          </a-row>
+        </a-tab-pane>
+        <a-tab-pane key="2" tab="前台" force-render>
+          <PostList
+            :data-source="frontend.posts"
+            :columns="frontend.columns"
+            @onView="(record) => getById(record.id)"
+            scene="frontend"
+          />
+        </a-tab-pane>
+      </a-tabs>
     </a-row>
   </page-view>
 </template>
 
 <script>
-import MarkdownEditor from "./MarkdownEditor.vue";
-import {PageView} from "@/layouts";
+import MarkdownEditor from "../components/MarkdownEditor.vue";
+import { PageView } from "@/layouts";
 import postApi from "@/api/post";
+import PostList from "../components/PostList.vue";
+
+const postColumns = [
+  {
+    title: "ID",
+    dataIndex: "id",
+    key: "id",
+  },
+  {
+    title: "标题",
+    dataIndex: "title",
+  },
+  {
+    title: "版本",
+    dataIndex: "version",
+    customRender: (version) => {
+      return `v${version}`;
+    },
+  },
+  {
+    title: "状态",
+    key: "status",
+    scopedSlots: { customRender: "status" },
+  },
+  {
+    title: "操作",
+    key: "action",
+    scopedSlots: { customRender: "action" },
+  },
+];
+
+const changelogColumns = [
+  {
+    title: "ID",
+    dataIndex: "id",
+    key: "id",
+  },
+  {
+    title: "父ID",
+    dataIndex: "sourceId",
+  },
+  {
+    title: "版本",
+    dataIndex: "version",
+    customRender: (version) => {
+      return `v${version}`;
+    },
+  },
+  {
+    title: "状态",
+    key: "status",
+    scopedSlots: { customRender: "status" },
+  },
+  {
+    title: "操作",
+    key: "action",
+    scopedSlots: { customRender: "action" },
+  },
+];
 
 export default {
   name: "Post",
@@ -100,22 +139,22 @@ export default {
   },
   components: {
     MarkdownEditor,
+    PostList,
     PageView,
   },
   data() {
     return {
       backend: {
+        columns: postColumns,
         posts: [],
-        versions: [],
-        pagination: {
-          onChange: (page) => {
-            console.log(page);
-            this.listAllPostsByPage();
-          },
-          pageSize: 10,
-        },
+        pagination: {},
+      },
+      changelogs: {
+        data: [],
+        columns: changelogColumns,
       },
       frontend: {
+        columns: postColumns,
         posts: [],
         pagination: {},
       },
@@ -150,8 +189,8 @@ export default {
       postApi.draftPost(this.postToStage).then(() => {
         this.$message.success("保存成功");
         this.postToStage = {
-          content: {}
-        }
+          content: {},
+        };
         this.listAllPostsByPage();
       });
     },
@@ -175,7 +214,7 @@ export default {
     listAllContentVersions(postId) {
       postApi.listAllContentVersions(postId).then((res) => {
         console.log(res);
-        this.backend.versions = res.data;
+        this.changelogs.data = res.data;
       });
     },
     handlePublish() {
@@ -184,9 +223,10 @@ export default {
         this.$message.success("发布成功");
         this.listAllPostsByPage();
         this.listPublishedPosts();
+        this.listAllContentVersions(this.postToStage.id);
         this.postToStage = {
-          content: {}
-        }
+          content: {},
+        };
       });
     },
     getContentRecord(id) {
@@ -204,6 +244,8 @@ export default {
       postApi.rollbackToVersion(postId, version).then((res) => {
         this.postToStage = res.data;
         this.$message.success("回退成功");
+        this.listAllPostsByPage();
+        this.listPublishedPosts();
       });
     },
   },
@@ -215,14 +257,17 @@ export default {
 h3 {
   margin: 40px 0 0;
 }
+
 ul {
   list-style-type: none;
   padding: 0;
 }
+
 li {
   display: inline-block;
   margin: 0 10px;
 }
+
 a {
   color: #42b983;
 }
