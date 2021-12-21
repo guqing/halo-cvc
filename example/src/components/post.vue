@@ -165,11 +165,11 @@ export default {
         this.postToStage = res.data;
       });
     },
-    onContentChange(val) {
+    onContentChange(val, htmlContent) {
       this.contentChanges++;
       this.postToStage.content = {
         originalContent: val,
-        content: val,
+        content: htmlContent,
       };
     },
     listAllContentVersions(postId) {

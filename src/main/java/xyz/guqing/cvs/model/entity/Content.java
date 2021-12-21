@@ -5,6 +5,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import javax.persistence.MapsId;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
@@ -39,8 +40,10 @@ public class Content {
 
     private Integer contentRecordId;
 
+    @Lob
     private String content;
 
+    @Lob
     private String originalContent;
 
     @Override

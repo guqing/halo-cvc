@@ -31,6 +31,7 @@ export default {
     return {
       toolbars,
       originalContentData: "",
+      renderContent: ""
     };
   },
   watch: {
@@ -38,7 +39,8 @@ export default {
       this.originalContentData = val;
     },
     originalContentData(val) {
-      this.$emit("onContentChange", val);
+      this.renderContent = this.$refs.md.d_render
+      this.$emit("onContentChange", val, this.renderContent);
     },
   },
   methods: {
