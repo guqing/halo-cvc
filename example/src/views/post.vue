@@ -1,13 +1,13 @@
 <template>
   <page-view :title="postToStage.title ? postToStage.title : '新文章'" affix>
-    <template slot="extra">
+    <template slot="extra" v-if="editorVisible">
       <a-space>
         <a-button @click="handleSaveDraft"> 保存</a-button>
         <a-button type="primary" @click="handlePublish"> 发布</a-button>
       </a-space>
     </template>
     <a-row :gutter="12">
-      <a-col :span="24">
+      <a-col :span="12" v-if="editorVisible">
         <div class="mb-4">
           <a-input
             v-model="postToStage.title"
@@ -15,21 +15,25 @@
             size="large"
           />
         </div>
-        <div id="editor" :style="{ height: '300px' }">
+        <div id="editor">
           <MarkdownEditor
+            :style="{ maxHeight: '500px' }"
             :originalContent="postToStage.content.originalContent"
             @onContentChange="onContentChange"
             @onSaveDraft="handleSaveDraft"
           />
         </div>
       </a-col>
-    </a-row>
-
-    <a-row :gutter="12" style="margin-top: 30px">
-      <a-tabs default-active-key="1">
-        <a-tab-pane key="1" tab="管理后台">
-          <a-row :gutter="12" style="margin-top: 30px">
-            <a-col :span="12">
+      <a-col :span="12" v-if="!editorVisible">
+        <div
+          v-html="postToStage.content.content"
+          style="text-align: left"
+        ></div>
+      </a-col>
+      <a-col :span="12">
+        <a-tabs default-active-key="1" @change="onTabChange">
+          <a-tab-pane key="1" tab="管理后台">
+            <a-row :gutter="12" style="margin-top: 30px">
               文章列表
               <PostList
                 :data-source="backend.posts"
@@ -39,9 +43,8 @@
                 @onChangeLog="(record) => listAllContentVersions(record.id)"
                 @onEdit="(record) => getDraftById(record.id)"
               />
-            </a-col>
-
-            <a-col :span="12">
+            </a-row>
+            <a-row>
               文章版本
               <PostList
                 :data-source="changelogs.data"
@@ -52,18 +55,18 @@
                 "
                 scene="changelog"
               />
-            </a-col>
-          </a-row>
-        </a-tab-pane>
-        <a-tab-pane key="2" tab="前台" force-render>
-          <PostList
-            :data-source="frontend.posts"
-            :columns="frontend.columns"
-            @onView="(record) => getById(record.id)"
-            scene="frontend"
-          />
-        </a-tab-pane>
-      </a-tabs>
+            </a-row>
+          </a-tab-pane>
+          <a-tab-pane key="2" tab="前台" force-render>
+            <PostList
+              :data-source="frontend.posts"
+              :columns="frontend.columns"
+              @onView="(record) => getById(record.id)"
+              scene="frontend"
+            />
+          </a-tab-pane>
+        </a-tabs>
+      </a-col>
     </a-row>
   </page-view>
 </template>
@@ -144,6 +147,7 @@ export default {
   },
   data() {
     return {
+      editorVisible: true,
       backend: {
         columns: postColumns,
         posts: [],
@@ -169,6 +173,9 @@ export default {
     this.listPublishedPosts();
   },
   methods: {
+    onTabChange(val) {
+      this.editorVisible = val === "1";
+    },
     listAllPostsByPage() {
       postApi.list().then((res) => {
         this.backend.posts = res.data.content;
