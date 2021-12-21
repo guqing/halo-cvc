@@ -1,4 +1,5 @@
 import PageView from "./PageView";
-import BlankLayout from "./BlankLayout";
+import RouteView from "./RouteView";
+import BasicLayout from "./BasicLayout";
 
-export { PageView, BlankLayout };
+export { PageView, RouteView, BasicLayout };

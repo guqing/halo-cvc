@@ -18,7 +18,7 @@ public interface ContentPatchLogRepository extends JpaRepository<ContentPatchLog
 
     ContentPatchLog findFirstByPostIdOrderByVersionDesc(Integer postId);
 
-    @Query("from ContentPatchLog c where c.postId = :postId and c.version=:version and c.status=:status order by c.version desc")
+    @Query("from ContentPatchLog c where c.postId = :postId and c.version<=:version and c.status=:status order by c.version desc")
     List<ContentPatchLog> findByPostIdAndVersion(Integer postId, Integer version, PostStatus status);
 
     ContentPatchLog findByPostIdAndVersion(Integer postId, Integer version);

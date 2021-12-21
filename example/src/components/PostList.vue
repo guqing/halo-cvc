@@ -15,14 +15,13 @@
       <a v-if="actions.view.includes(scene)" @click="handleView(record)">
         查看
       </a>
-      <span v-if="actions.changelog.includes(scene)">
-        <a-divider type="vertical" />
-        <a @click="handleChangeLog(record)"> 版本历史 </a>
-      </span>
-
       <span v-if="actions.edit.includes(scene)">
         <a-divider type="vertical" />
         <a @click="handleEdit(record)">编辑</a>
+      </span>
+      <span v-if="actions.changelog.includes(scene)">
+        <a-divider type="vertical" />
+        <a @click="handleChangeLog(record)"> 版本历史 </a>
       </span>
       <span v-if="actions.rollback.includes(scene)">
         <a-divider type="vertical" />

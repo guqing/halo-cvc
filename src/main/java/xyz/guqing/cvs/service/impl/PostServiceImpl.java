@@ -239,6 +239,9 @@ public class PostServiceImpl implements PostService {
             ContentPatchLog contentPatchLog = patchLogs.get(0);
             return getUnifiedDiffString(contentPatchLog, contentPatchLog);
         }
+        if (patchLogs.size() < 2) {
+            return StringUtils.EMPTY;
+        }
 
         return getUnifiedDiffString(patchLogs.get(0), patchLogs.get(1));
     }
@@ -253,8 +256,8 @@ public class PostServiceImpl implements PostService {
         PatchedContent currentContent = contentPatchLogService.applyPatch(current);
         PatchedContent prevContent = contentPatchLogService.applyPatch(prev);
         // 当前版本(revised)与上一个版本(original)比较
-        List<String> original = PatchUtils.breakLine(currentContent.getOriginalContent());
-        List<String> revised = PatchUtils.breakLine(prevContent.getOriginalContent());
+        List<String> revised = PatchUtils.breakLine(currentContent.getOriginalContent());
+        List<String> original = PatchUtils.breakLine(prevContent.getOriginalContent());
 
         Patch<String> patch = DiffUtils.diff(original, revised);
         UnifiedDiff diff = UnifiedDiff.from("", "",

@@ -1,170 +1,73 @@
 <template>
-  <page-view :title="postToStage.title ? postToStage.title : '新文章'" affix>
-    <template slot="extra" v-if="editorVisible">
-      <a-space>
-        <a-button @click="handleSaveDraft"> 保存</a-button>
-        <a-button type="primary" @click="handlePublish"> 发布</a-button>
-      </a-space>
-    </template>
-    <a-row :gutter="12">
-      <a-col :span="12" v-if="editorVisible">
-        <div class="mb-4">
-          <a-input
-            v-model="postToStage.title"
-            placeholder="请输入文章标题"
-            size="large"
-          />
-        </div>
-        <div id="editor">
-          <MarkdownEditor
-            :style="{ maxHeight: '500px' }"
-            :originalContent="postToStage.content.originalContent"
-            @onContentChange="onContentChange"
-            @onSaveDraft="handleSaveDraft"
-          />
-        </div>
-      </a-col>
-      <a-col :span="12" v-if="!editorVisible">
-        <div
-          v-html="postToStage.content.content"
-          style="text-align: left"
-        ></div>
-      </a-col>
-      <a-col :span="12" v-if="diffVisible">
-        <content-diff />
-      </a-col>
-
-      <a-col :span="12">
-        <a-tabs default-active-key="1" @change="onTabChange">
-          <a-tab-pane key="1" tab="管理后台">
-            <a-row :gutter="12" style="margin-top: 30px">
-              文章列表
-              <PostList
-                :data-source="backend.posts"
-                scene="backend"
-                :columns="backend.columns"
-                @onView="(record) => getDraftById(record.id)"
-                @onChangeLog="(record) => listAllContentVersions(record.id)"
-                @onEdit="(record) => getDraftById(record.id)"
-              />
-            </a-row>
-            <a-row>
-              文章版本
-              <PostList
-                :data-source="changelogs.data"
-                :columns="changelogs.columns"
-                @onView="(record) => getContentRecord(record.id)"
-                @onRollback="
-                  (record) => rollbackToVersion(record.postId, record.version)
-                "
-                scene="changelog"
-              />
-            </a-row>
-          </a-tab-pane>
-          <a-tab-pane key="2" tab="前台" force-render>
-            <PostList
-              :data-source="frontend.posts"
-              :columns="frontend.columns"
-              @onView="(record) => getById(record.id)"
-              scene="frontend"
+  <a-card>
+    <page-view :title="postToStage.title ? postToStage.title : '新文章'" affix>
+      <template slot="extra" v-if="editorVisible">
+        <a-space>
+          <a-button @click="handleSaveDraft"> 保存</a-button>
+          <a-button type="primary" @click="handlePublish"> 发布</a-button>
+        </a-space>
+      </template>
+      <a-row :gutter="12">
+        <a-col :span="12" v-if="editorVisible">
+          <div class="mb-4">
+            <a-input
+              v-model="postToStage.title"
+              placeholder="请输入文章标题"
+              size="large"
             />
-          </a-tab-pane>
-        </a-tabs>
-      </a-col>
-    </a-row>
-  </page-view>
+          </div>
+          <div id="editor">
+            <MarkdownEditor
+              :style="{ height: '500px' }"
+              :originalContent="postToStage.content.originalContent"
+              @onContentChange="onContentChange"
+              @onSaveDraft="handleSaveDraft"
+            />
+          </div>
+        </a-col>
+        <a-col :span="12" v-if="!editorVisible">
+          <div
+            v-html="postToStage.content.content"
+            style="text-align: left"
+          ></div>
+        </a-col>
+
+        <a-col :span="12">
+          <a-row :gutter="12" style="margin-top: 30px">
+            文章列表
+            <PostList
+              :data-source="backend.posts"
+              scene="backend"
+              :columns="backend.columns"
+              @onView="(record) => handleView(record.id)"
+              @onChangeLog="(record) => handleViewChangeLog(record)"
+              @onEdit="(record) => handleEdit(record.id)"
+            />
+          </a-row>
+        </a-col>
+      </a-row>
+    </page-view>
+  </a-card>
 </template>
 
 <script>
 import MarkdownEditor from "../components/MarkdownEditor.vue";
-import { PageView } from "@/layouts";
 import postApi from "@/api/post";
 import PostList from "../components/PostList.vue";
-import ContentDiff from "../components/ContentDiff.vue";
-
-const postColumns = [
-  {
-    title: "ID",
-    dataIndex: "id",
-    key: "id",
-  },
-  {
-    title: "标题",
-    dataIndex: "title",
-  },
-  {
-    title: "版本",
-    dataIndex: "version",
-    customRender: (version) => {
-      return `v${version}`;
-    },
-  },
-  {
-    title: "状态",
-    key: "status",
-    scopedSlots: { customRender: "status" },
-  },
-  {
-    title: "操作",
-    key: "action",
-    scopedSlots: { customRender: "action" },
-  },
-];
-
-const changelogColumns = [
-  {
-    title: "ID",
-    dataIndex: "id",
-    key: "id",
-  },
-  {
-    title: "父ID",
-    dataIndex: "sourceId",
-  },
-  {
-    title: "版本",
-    dataIndex: "version",
-    customRender: (version) => {
-      return `v${version}`;
-    },
-  },
-  {
-    title: "状态",
-    key: "status",
-    scopedSlots: { customRender: "status" },
-  },
-  {
-    title: "操作",
-    key: "action",
-    scopedSlots: { customRender: "action" },
-  },
-];
+import { postColumns } from "@/core/posts";
+import { PageView } from "@/layouts";
 
 export default {
   name: "Post",
-  props: {
-    msg: String,
-  },
   components: {
     MarkdownEditor,
     PostList,
     PageView,
-    ContentDiff,
   },
   data() {
     return {
       editorVisible: true,
-      diffVisible: false,
       backend: {
-        columns: postColumns,
-        posts: [],
-        pagination: {},
-      },
-      changelogs: {
-        data: [],
-        columns: changelogColumns,
-      },
-      frontend: {
         columns: postColumns,
         posts: [],
         pagination: {},
@@ -177,26 +80,23 @@ export default {
   },
   created() {
     this.listAllPostsByPage();
-    this.listPublishedPosts();
   },
   methods: {
-    onTabChange(val) {
-      this.editorVisible = val === "1";
-      if (this.editorVisible) {
-        this.diffVisible = false;
-      }
+    handleView(id) {
+      this.editorVisible = false;
+      this.getDraftById(id);
+    },
+    handleEdit(id) {
+      this.editorVisible = true;
+      this.postToStage = {
+        content: {},
+      };
+      this.getDraftById(id);
     },
     listAllPostsByPage() {
       postApi.list().then((res) => {
         this.backend.posts = res.data.content;
       });
-    },
-    listPublishedPosts() {
-      postApi
-        .listByStatus("PUBLISHED", this.frontend.pagination)
-        .then((res) => {
-          this.frontend.posts = res.data.content;
-        });
     },
     handleSaveDraft() {
       if (!this.postToStage.title) {
@@ -211,11 +111,6 @@ export default {
         this.listAllPostsByPage();
       });
     },
-    getById(postId) {
-      postApi.getById(postId).then((res) => {
-        this.postToStage = res.data;
-      });
-    },
     getDraftById(postId) {
       postApi.getDraftById(postId).then((res) => {
         this.postToStage = res.data;
@@ -227,12 +122,6 @@ export default {
         originalContent: val,
         content: htmlContent,
       };
-    },
-    listAllContentVersions(postId) {
-      postApi.listAllContentVersions(postId).then((res) => {
-        console.log(res);
-        this.changelogs.data = res.data;
-      });
     },
     handlePublish() {
       postApi.publish(this.postToStage.id).then((res) => {
@@ -246,25 +135,8 @@ export default {
         };
       });
     },
-    getContentRecord(id) {
-      this.diffVisible = true;
-      this.editorVisible = false;
-      postApi.getContentRecordById(id).then((res) => {
-        const { content, originalContent, postId } = res.data;
-        this.postToStage.id = postId;
-        this.postToStage.content = {
-          content,
-          originalContent,
-        };
-      });
-    },
-    rollbackToVersion(postId, version) {
-      postApi.rollbackToVersion(postId, version).then((res) => {
-        this.postToStage = res.data;
-        this.$message.success("回退成功");
-        this.listAllPostsByPage();
-        this.listPublishedPosts();
-      });
+    handleViewChangeLog(record) {
+      this.$router.push({ name: "ContentDiff", params: { post: record } });
     },
   },
 };
