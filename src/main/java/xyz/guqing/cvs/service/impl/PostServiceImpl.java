@@ -1,12 +1,23 @@
 package xyz.guqing.cvs.service.impl;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.text.DiffRowGenerator;
+import com.github.difflib.unifieddiff.UnifiedDiff;
+import com.github.difflib.unifieddiff.UnifiedDiffFile;
+import com.github.difflib.unifieddiff.UnifiedDiffWriter;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Date;
 import java.util.List;
 import javax.transaction.Transactional;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import xyz.guqing.cvs.model.dto.ContentDTO;
 import xyz.guqing.cvs.model.dto.PostDTO;
 import xyz.guqing.cvs.model.dto.PostDetailDTO;
@@ -22,6 +33,7 @@ import xyz.guqing.cvs.repository.ContentRepository;
 import xyz.guqing.cvs.repository.PostRepository;
 import xyz.guqing.cvs.service.ContentPatchLogService;
 import xyz.guqing.cvs.service.PostService;
+import xyz.guqing.cvs.utils.PatchUtils;
 
 /**
  * @author guqing
@@ -30,15 +42,16 @@ import xyz.guqing.cvs.service.PostService;
 @Service
 public class PostServiceImpl implements PostService {
 
+    private static final DiffRowGenerator diffRowGenerator = DiffRowGenerator.create()
+        .showInlineDiffs(true)
+        .inlineDiffByWord(true)
+        .build();
     @Autowired
     private PostRepository postRepository;
-
     @Autowired
     private ContentRepository contentRepository;
-
     @Autowired
     private ContentPatchLogRepository contentPatchLogRepository;
-
     @Autowired
     private ContentPatchLogService contentPatchLogService;
 
@@ -213,5 +226,45 @@ public class PostServiceImpl implements PostService {
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
         postDTO.setContent(new ContentDTO().convertFrom(content));
         return postDTO;
+    }
+
+    @Override
+    public String getContentDiff(Integer postId, Integer version) {
+        List<ContentPatchLog> patchLogs =
+            contentPatchLogRepository.findByPostIdAndVersion(postId, version, PostStatus.PUBLISHED);
+        if (CollectionUtils.isEmpty(patchLogs)) {
+            return StringUtils.EMPTY;
+        }
+        if (version == 1) {
+            ContentPatchLog contentPatchLog = patchLogs.get(0);
+            return getUnifiedDiffString(contentPatchLog, contentPatchLog);
+        }
+
+        return getUnifiedDiffString(patchLogs.get(0), patchLogs.get(1));
+    }
+
+    private String getUnifiedDiffString(ContentPatchLog current, ContentPatchLog prev) {
+        Assert.notNull(current, "The current must not be null.");
+        Assert.notNull(prev, "The last must not be null.");
+        String fromFile = null;
+        if (current.getVersion() != 1) {
+            fromFile = "v" + prev.getVersion();
+        }
+        PatchedContent currentContent = contentPatchLogService.applyPatch(current);
+        PatchedContent prevContent = contentPatchLogService.applyPatch(prev);
+        // 当前版本(revised)与上一个版本(original)比较
+        List<String> original = PatchUtils.breakLine(currentContent.getOriginalContent());
+        List<String> revised = PatchUtils.breakLine(prevContent.getOriginalContent());
+
+        Patch<String> patch = DiffUtils.diff(original, revised);
+        UnifiedDiff diff = UnifiedDiff.from("", "",
+            UnifiedDiffFile.from(fromFile, "v" + current.getVersion(), patch));
+        StringWriter writer = new StringWriter();
+        try {
+            UnifiedDiffWriter.write(diff, f -> original, writer, 5);
+            return writer.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

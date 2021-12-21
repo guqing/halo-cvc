@@ -34,4 +34,6 @@ public interface PostService {
     List<ContentPatchLog> listAllVersionsBy(Integer postId);
 
     PostDetailDTO rollbackByIdAndVersion(Integer postId, Integer version);
+
+    String getContentDiff(Integer postId, Integer version);
 }

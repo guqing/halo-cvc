@@ -118,6 +118,13 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
+    @GetMapping("/{postId:\\d+}/versions/{version:\\d+}/diffs")
+    public ResponseEntity<String> getContentDiff(@PathVariable Integer postId,
+        @PathVariable Integer version) {
+        String content = postService.getContentDiff(postId, version);
+        return ResponseEntity.ok(content);
+    }
+
     private PostDTO convertTo(Post post) {
         PostDTO postDTO = new PostDTO().convertFrom(post);
         postDTO.setStatus(post.getStatus().name());
