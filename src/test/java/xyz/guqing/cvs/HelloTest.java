@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import xyz.guqing.cvs.utils.PatchUtils;
 
 /**
  * @author guqing
@@ -35,6 +36,21 @@ public class HelloTest {
         for (DiffRow row : rows) {
             System.out.println(row.getOldLine() + "|" + row.getNewLine() + "<br/>");
         }
+    }
+
+    @Test
+    public void test0() {
+        final String s = PatchUtils.diffToPatchString("", "hello this is a line.");
+        System.out.println(s);
+        // 先还原出v1的实际值
+        final String v1 = PatchUtils.restoreContent(s, "");
+        // 在与v1 diff 为v2
+        final String v2 = PatchUtils.diffToPatchString(v1, "hello this is second line.");
+        System.out.println(v2);
+
+        // 恢复v2
+        final String s1 = PatchUtils.restoreContent(v2, v1);
+        System.out.println(s1);
     }
 
     @Test

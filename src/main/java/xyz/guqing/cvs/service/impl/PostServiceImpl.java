@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.List;
 import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,10 +43,6 @@ import xyz.guqing.cvs.utils.PatchUtils;
 @Service
 public class PostServiceImpl implements PostService {
 
-    private static final DiffRowGenerator diffRowGenerator = DiffRowGenerator.create()
-        .showInlineDiffs(true)
-        .inlineDiffByWord(true)
-        .build();
     @Autowired
     private PostRepository postRepository;
     @Autowired
@@ -212,15 +209,27 @@ public class PostServiceImpl implements PostService {
             contentPatchLogService.applyPatch(contentRecordToRollback);
 
         Content content = contentRepository.getById(postId);
+        Integer oldContentRecordId = content.getContentRecordId();
         content.setContent(patchedContent.getContent());
         content.setOriginalContent(patchedContent.getOriginalContent());
         content.setContentRecordId(contentRecordToRollback.getVersion());
         contentRepository.save(content);
 
+        // 新创建一条回退的patch log与切换到的 patch log变更一致
+        ContentPatchLog revertContentPatchLog = new ContentPatchLog();
+        BeanUtils.copyProperties(contentRecordToRollback, revertContentPatchLog);
+        revertContentPatchLog.setId(null);
+        revertContentPatchLog.setStatus(PostStatus.PUBLISHED);
+        revertContentPatchLog.setSourceId(oldContentRecordId);
+        Integer maxVersion =
+            contentPatchLogRepository.findFirstByPostIdOrderByVersionDesc(postId).getVersion();
+        revertContentPatchLog.setVersion(maxVersion + 1);
+        contentPatchLogRepository.save(revertContentPatchLog);
+
         Post post = postRepository.getById(postId);
-        post.setVersion(contentRecordToRollback.getVersion());
-        post.setPublishTime(contentRecordToRollback.getPublishTime());
-        post.setContentHeadRef(contentRecordToRollback.getId());
+        post.setVersion(revertContentPatchLog.getVersion());
+        post.setPublishTime(new Date());
+        post.setContentHeadRef(revertContentPatchLog.getId());
         postRepository.save(post);
 
         PostDetailDTO postDTO = new PostDetailDTO().convertFrom(post);
