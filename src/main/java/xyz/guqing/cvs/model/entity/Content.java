@@ -1,6 +1,7 @@
 package xyz.guqing.cvs.model.entity;
 
 import java.util.Objects;
+import javax.persistence.Cacheable;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -15,6 +16,8 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.ToString.Exclude;
 import org.hibernate.Hibernate;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 /**
  * 当前正在使用版本的文章内容表.
@@ -22,6 +25,7 @@ import org.hibernate.Hibernate;
  * @author guqing
  * @date 2021-12-18
  */
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Getter
 @Setter
 @ToString

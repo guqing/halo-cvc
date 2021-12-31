@@ -2,6 +2,7 @@ package xyz.guqing.cvs.model.entity;
 
 import java.util.Date;
 import java.util.Objects;
+import javax.persistence.Cacheable;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -14,12 +15,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import xyz.guqing.cvs.model.enums.PostStatus;
 
 /**
  * @author guqing
  * @date 2021-12-18
  */
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Getter
 @Setter
 @ToString

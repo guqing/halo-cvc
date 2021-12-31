@@ -24,3 +24,17 @@ spring:
           apply_to_ddl: true
         # 解决getById 延迟加载问题
         enable_lazy_load_no_trans: true
+        generate_statistics: true
+        stat: debug
+        # Second Level Cache - Ehcache
+        #1. enable second level cache
+        cache:
+          use_second_level_cache: true
+          #2. specify the caching framework - EhCache
+          region:
+            factory_class: org.hibernate.cache.ehcache.EhCacheRegionFactory
+      #3. Only cache what I tell to cache.
+      #javax.persistence.sharedCache.mode: ENABLE_SELECTIVE
+
+logging:
+  level.net.sf.ehcache: debug
